@@ -3,3 +3,4 @@ __pycache__/
 data/raw/
 data/splits/
 artifacts/
+data/splits_v2/
