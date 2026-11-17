@@ -86,6 +86,19 @@ saved = joblib.load(MODEL_PATH)
 model = saved["model"]
 features = saved["features"]
 low_cutoff, high_cutoff = saved["risk_cutoffs"]
+if "capital_range" not in saved:
+    st.error("Обнови модель: запусти source/train_v2.py.")
+    st.stop()
+
+min_capital, max_capital = saved["capital_range"]
+default_capital = min(max(3.0, min_capital), max_capital)
+
+# Корректируем ранее введённое значение при обновлении страницы.
+if "input_capital" in st.session_state:
+    st.session_state["input_capital"] = min(
+        max(float(st.session_state["input_capital"]), min_capital),
+        max_capital,
+    )
 
 LOCATIONS = {
     "downtown": "Центр города",
@@ -159,7 +172,7 @@ inputs, dashboard = st.columns([1, 1.9], gap="large")
 def reset_profile():
     st.session_state["input_location"] = "downtown"
     st.session_state["input_experience"] = 5.0
-    st.session_state["input_capital"] = 3.0
+    st.session_state["input_capital"] = default_capital
     st.session_state["input_traffic"] = 5.0
     st.session_state["input_competition"] = 5.0
     st.session_state["input_franchise"] = False
@@ -184,8 +197,15 @@ with inputs:
         )
         capital = st.number_input(
             "Запас капитала, месяцев",
-            min_value=0.0, value=3.0, step=0.5,
+            min_value=min_capital,
+            max_value=max_capital,
+            value=default_capital,
+            step=0.5,
             key="input_capital",
+            help=(
+                f"Диапазон в обучающей выборке: "
+                f"от {min_capital:g} до {max_capital:g} месяцев."
+            ),
         )
         traffic = st.slider(
             "Пешеходный поток, баллы",
@@ -266,12 +286,21 @@ with dashboard:
             "График показывает реакцию модели на ввод."
         )
 
-        scenarios = [
-            ("Запас капитала +2 месяца", {
-                **profile,
-                "starting_capital_months": profile["starting_capital_months"] + 2,
-            }),
-        ]
+        scenarios = []
+
+        current_capital = profile["starting_capital_months"]
+        alternative_capital = min(current_capital + 2, max_capital)
+
+        if alternative_capital > current_capital:
+            scenarios.append((
+                f"Запас капитала: {current_capital:g} → "
+                f"{alternative_capital:g} месяцев",
+                {
+                    **profile,
+                    "starting_capital_months": alternative_capital,
+                },
+            ))
+
         if profile["foot_traffic"] < 10:
             scenarios.append((
                 "Альтернативная точка с более высоким потоком",

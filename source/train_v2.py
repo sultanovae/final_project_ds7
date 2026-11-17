@@ -87,6 +87,10 @@ joblib.dump(
         "model": model,
         "features": features,
         "risk_cutoffs": [low_cutoff, high_cutoff],
+        "capital_range": [
+    float(train["starting_capital_months"].min()),
+    float(train["starting_capital_months"].max()),
+],
     },
     model_path,
 )
